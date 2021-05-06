@@ -3,10 +3,12 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "/usr/lib/avr/include",
+                "/home/rob/Projects/anduril/**"
             ],
             "defines": [],
-            "compilerPath": "/usr/bin/avr-gcc",
+            "compilerPath": "/usr/bin/avr-gcc -DCONFIGFILE=cfg-emisar-d4v2.h -Wall -g -Os -mmcu=attiny1634 -c -std=gnu99 -fgnu89-inline -fwhole-program -DATTINY=1634 -I.. -I../.. -I../../.. -fshort-enums",
             "cStandard": "gnu17",
             "cppStandard": "c++17",
             "intelliSenseMode": "linux-gcc-x64"
