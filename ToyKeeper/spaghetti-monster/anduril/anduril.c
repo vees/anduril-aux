@@ -362,7 +362,7 @@ uint8_t rgb_led_off_mode = RGB_LED_OFF_DEFAULT;
 uint8_t rgb_led_lockout_mode = RGB_LED_LOCKOUT_DEFAULT;
 #endif
 
-uint8_t aux_color_mode = 0x20; // red to start
+volatile uint8_t aux_color_mode = 0x20; // red to start
 
 #ifdef USE_FACTORY_RESET
 void factory_reset();
@@ -696,8 +696,8 @@ uint8_t off_state(Event event, uint16_t arg) {
         return MISCHIEF_MANAGED;
     }
     #elif defined(USE_AUX_RGB_LEDS)
-    // 7 clicks: change RGB aux LED pattern
-    else if (event == EV_7clicks) {
+    // 4 clicks: change RGB aux LED pattern
+    else if (event == EV_4clicks) {
         uint8_t mode = (rgb_led_off_mode >> 4) + 1;
         mode = mode % RGB_LED_NUM_PATTERNS;
         rgb_led_off_mode = (mode << 4) | (rgb_led_off_mode & 0x0f);
@@ -706,8 +706,8 @@ uint8_t off_state(Event event, uint16_t arg) {
         blink_confirm(1);
         return MISCHIEF_MANAGED;
     }
-    // 7 clicks (hold last): change RGB aux LED color
-    else if (event == EV_click7_hold) {
+    // 4 clicks (hold last): change RGB aux LED color
+    else if (event == EV_click4_hold) {
         setting_rgb_mode_now = 1;
         if (0 == (arg & 0x3f)) {
             uint8_t mode = (rgb_led_off_mode & 0x0f) + 1;
@@ -718,7 +718,7 @@ uint8_t off_state(Event event, uint16_t arg) {
         rgb_led_update(rgb_led_off_mode, arg);
         return MISCHIEF_MANAGED;
     }
-    else if (event == EV_click7_hold_release) {
+    else if (event == EV_click4_hold_release) {
         setting_rgb_mode_now = 0;
         save_config();
         return MISCHIEF_MANAGED;
@@ -1774,8 +1774,10 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     //uint8_t aux_ramp_mode = 0x10;
 
     if (event == EV_enter_state) {
-        // start state on bright red
-        rgb_led_update(rgb_led_lockout_mode, 0);
+        // start state on the saved color
+        aux_color_mode = rgb_led_lockout_mode;
+        rgb_led_update(aux_color_mode, 0);
+
     } else
     #endif
     if (event == EV_tick) {
@@ -1784,7 +1786,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
             #ifdef USE_INDICATOR_LED
             indicator_led(indicator_led_mode >> 2);
             #elif defined(USE_AUX_RGB_LEDS)
-            rgb_led_update(rgb_led_lockout_mode, arg);
+            rgb_led_update(aux_color_mode, arg);
             #endif
         }
         return MISCHIEF_MANAGED;
@@ -1796,7 +1798,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
             indicator_blink(arg);
         }
         #elif defined(USE_AUX_RGB_LEDS)
-        rgb_led_update(rgb_led_lockout_mode, arg);
+        rgb_led_update(aux_color_mode, arg);
         #endif
         return MISCHIEF_MANAGED;
     }
@@ -1824,13 +1826,17 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     #elif defined(USE_AUX_RGB_LEDS)
     // 1 click, move forward one color
     else if (event == EV_1click) {
-        uint8_t color = (rgb_led_lockout_mode & 0x0f) + 1;
+        uint8_t color = (aux_color_mode & 0x0f) + 1;
         color = color % 6; // only care about a few sample colors
-        rgb_led_lockout_mode = (0x20 | color);
-        rgb_led_update(rgb_led_lockout_mode, 0);
-        save_config();
+        aux_color_mode = (0x20 | color);
+        rgb_led_update(aux_color_mode, 0);
+        //save_config();
         //blink_confirm(1);
         return MISCHIEF_MANAGED;
+    }
+    else if (event == EV_3clicks) {
+        rgb_led_lockout_mode = aux_color_mode;
+        save_config();
     }
     #if false
     // click hold, move forward colors until released
