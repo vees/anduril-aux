@@ -20,7 +20,7 @@
 
 /********* User-configurable options *********/
 // Anduril config file name (set it here or define it at the gcc command line)
-//#define CONFIGFILE cfg-emisar-d4v2.h
+#define CONFIGFILE cfg-emisar-d4v2.h
 
 #define USE_LVP
 
@@ -296,9 +296,9 @@ uint8_t beacon_config_state(Event event, uint16_t arg);
 uint8_t sos_state(Event event, uint16_t arg);
 #endif
 // soft lockout
-#define MOON_DURING_LOCKOUT_MODE
+#undef MOON_DURING_LOCKOUT_MODE
 // if enabled, 2nd lockout click goes to the other ramp's floor level
-#define LOCKOUT_MOON_FANCY
+#undef LOCKOUT_MOON_FANCY
 uint8_t lockout_state(Event event, uint16_t arg);
 #ifdef USE_MOMENTARY_MODE
 // momentary / signalling mode
@@ -350,10 +350,10 @@ const PROGMEM uint8_t rgb_led_colors[] = {
 #define RGB_LED_NUM_PATTERNS 4
 #ifndef RGB_LED_OFF_DEFAULT
 //#define RGB_LED_OFF_DEFAULT 0x18  // low, voltage
-#define RGB_LED_OFF_DEFAULT 0x17  // low, rainbow
+#define RGB_LED_OFF_DEFAULT 0x10  // low, red
 #endif
 #ifndef RGB_LED_LOCKOUT_DEFAULT
-#define RGB_LED_LOCKOUT_DEFAULT 0x37  // blinking, rainbow
+#define RGB_LED_LOCKOUT_DEFAULT 0x20 // high, red
 #endif
 #ifndef RGB_RAINBOW_SPEED
 #define RGB_RAINBOW_SPEED 0x0f  // change color every 16 frames
@@ -361,6 +361,8 @@ const PROGMEM uint8_t rgb_led_colors[] = {
 uint8_t rgb_led_off_mode = RGB_LED_OFF_DEFAULT;
 uint8_t rgb_led_lockout_mode = RGB_LED_LOCKOUT_DEFAULT;
 #endif
+
+uint8_t aux_color_mode = 0x20; // red to start
 
 #ifdef USE_FACTORY_RESET
 void factory_reset();
@@ -521,7 +523,9 @@ const PROGMEM uint8_t version_number[] = VERSION_NUMBER;
 uint8_t version_check_state(Event event, uint16_t arg);
 #endif
 
-const PROGMEM uint8_t aux_levels[] = { 0x10,0x11,0x12,0x13,0x14,0x15,0x16,0x20,0x21,0x22,0x23,0x24,0x25,0x26,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 };
+#ifdef AUX_LEVELS
+const PROGMEM uint8_t aux_levels[] = { AUX_LEVELS };
+#endif
 
 uint8_t off_state(Event event, uint16_t arg) {
     // turn emitter off when entering state
@@ -594,7 +598,7 @@ uint8_t off_state(Event event, uint16_t arg) {
         set_state(steady_state, 1);
         return MISCHIEF_MANAGED;
     }
-    #if (B_TIMING_ON != B_TIMEOUT_T)
+    #if false && (B_TIMING_ON != B_TIMEOUT_T)
     // 1 click (before timeout): go to memorized level, but allow abort for double click
     else if (event == EV_click1_release) {
         #ifdef USE_MANUAL_MEMORY
@@ -610,19 +614,21 @@ uint8_t off_state(Event event, uint16_t arg) {
     else if (event == EV_1click) {
         #ifdef USE_MANUAL_MEMORY
         if (manual_memory)
-            set_state(steady_state, manual_memory);
+            set_state(steady_state, nearest_level(manual_memory));
         else
+            set_state(steady_state, nearest_level(memorized_level));
         #endif
-        set_state(steady_state, memorized_level);
         return MISCHIEF_MANAGED;
     }
-    // click, hold: go to highest level (ceiling) (for ramping down)
-    else if (event == EV_click2_hold) {
-        set_state(steady_state, MAX_LEVEL);
-        return MISCHIEF_MANAGED;
-    }
-    // 2 clicks: highest mode (ceiling)
+    // two clicks: go to the "lockout state" repurposed for bright aux
     else if (event == EV_2clicks) {
+        // prep for lockout state event
+        set_level(0);
+        set_state(lockout_state, 0);
+        return MISCHIEF_MANAGED;
+    }
+    // click and hold: highest mode (ceiling)
+    else if (event == EV_click2_hold) {
         set_state(steady_state, MAX_LEVEL);
         return MISCHIEF_MANAGED;
     }
@@ -650,12 +656,12 @@ uint8_t off_state(Event event, uint16_t arg) {
         return MISCHIEF_MANAGED;
     }
     #endif
-    // 4 clicks: soft lockout
+    #if false
+    // 4 clicks: nothing currently
     else if (event == EV_4clicks) {
-        blink_confirm(2);
-        set_state(lockout_state, 0);
         return MISCHIEF_MANAGED;
     }
+    #endif
     #ifdef USE_MOMENTARY_MODE
     // 5 clicks: momentary mode
     else if (event == EV_5clicks) {
@@ -1764,7 +1770,11 @@ uint8_t lockout_state(Event event, uint16_t arg) {
         indicator_led(indicator_led_mode >> 2);
     } else
     #elif defined(USE_AUX_RGB_LEDS)
+    // start on bright red
+    //uint8_t aux_ramp_mode = 0x10;
+
     if (event == EV_enter_state) {
+        // start state on bright red
         rgb_led_update(rgb_led_lockout_mode, 0);
     } else
     #endif
@@ -1812,19 +1822,20 @@ uint8_t lockout_state(Event event, uint16_t arg) {
         return MISCHIEF_MANAGED;
     }
     #elif defined(USE_AUX_RGB_LEDS)
-    // 3 clicks: change RGB aux LED pattern
-    else if (event == EV_3clicks) {
-        uint8_t mode = (rgb_led_lockout_mode >> 4) + 1;
-        mode = mode % RGB_LED_NUM_PATTERNS;
-        rgb_led_lockout_mode = (mode << 4) | (rgb_led_lockout_mode & 0x0f);
+    // 1 click, move forward one color
+    else if (event == EV_1click) {
+        uint8_t color = (rgb_led_lockout_mode & 0x0f) + 1;
+        color = color % 6; // only care about a few sample colors
+        rgb_led_lockout_mode = (0x20 | color);
         rgb_led_update(rgb_led_lockout_mode, 0);
         save_config();
-        blink_confirm(1);
+        //blink_confirm(1);
         return MISCHIEF_MANAGED;
     }
-    // click, click, hold: change RGB aux LED color
-    else if (event == EV_click3_hold) {
-        setting_rgb_mode_now = 1;
+    #if false
+    // click hold, move forward colors until released
+    else if (event == EV_click1_hold) {
+        //setting_rgb_mode_now = 1;
         if (0 == (arg & 0x3f)) {
             uint8_t mode = (rgb_led_lockout_mode & 0x0f) + 1;
             mode = mode % RGB_LED_NUM_COLORS;
@@ -1834,16 +1845,19 @@ uint8_t lockout_state(Event event, uint16_t arg) {
         rgb_led_update(rgb_led_lockout_mode, arg);
         return MISCHIEF_MANAGED;
     }
-    // click, click, hold, release: save new color
-    else if (event == EV_click3_hold_release) {
-        setting_rgb_mode_now = 0;
-        save_config();
+
+
+    // click, hold, release: save new color
+    else if (event == EV_click1_hold_release) {
+        // setting_rgb_mode_now = 0;
+        // save_config();
         return MISCHIEF_MANAGED;
     }
     #endif
-    // 4 clicks: exit
-    else if (event == EV_4clicks) {
-        blink_confirm(1);
+    #endif
+    // 2 clicks: exit
+    else if (event == EV_2clicks) {
+        //blink_confirm(1);
         set_state(off_state, 0);
         return MISCHIEF_MANAGED;
     }
@@ -2328,8 +2342,7 @@ void set_level_and_therm_target(uint8_t level) {
     #ifdef USE_INDICATOR_LED
     indicator_led(0);
     #elif defined(USE_AUX_RGB_LEDS)
-    const uint8_t *my_aux_levels = aux_levels;
-    rgb_led_update(pgm_read_byte(my_aux_levels+level), 0);
+        //rgb_led_update(pgm_read_byte(aux_levels+level), 0);
     #endif
 
 }
