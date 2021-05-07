@@ -2,6 +2,11 @@
 #include "cfg-noctigon-kr4.h"
 // ATTINY: 1634
 
+#define USE_AUX_RGB_LEDS
+// it also has an independent LED in the button
+#define USE_BUTTON_LED
+#define USE_INDICATOR_LED_WHILE_RAMPING
+
 // brightness w/ SST-20 4000K LEDs:
 // 0/1023: 0.35 lm
 // 1/1023: 2.56 lm
@@ -44,4 +49,29 @@
 #define THERM_FASTER_LEVEL 143
 #undef MIN_THERM_STEPDOWN
 #define MIN_THERM_STEPDOWN DEFAULT_LEVEL
+
+
+#ifdef USE_MUGGLE_MODE
+#undef USE_MUGGLE_MODE
+#endif
+
+#ifdef USE_MOMENTARY_MODE
+#undef USE_MOMENTARY_MODE
+#endif
+
+#ifdef USE_TACTICAL_STROBE_MODE
+#undef USE_TACTICAL_STROBE_MODE
+#endif 
+
+#ifdef USE_BIKE_FLASHER_MODE
+#undef USE_BIKE_FLASHER_MODE
+#endif
+
+#ifdef MOON_DURING_LOCKOUT_MODE
+#undef MOON_DURING_LOCKOUT_MODE
+#endif
+
+#define USE_PARTY_STROBE_MODE
+#define USE_LIGHTNING_MODE
+#define USE_CANDLE_MODE
 

@@ -20,7 +20,7 @@
 
 /********* User-configurable options *********/
 // Anduril config file name (set it here or define it at the gcc command line)
-#define CONFIGFILE cfg-emisar-d4v2.h
+// #define CONFIGFILE cfg-emisar-d4v2.h
 
 #define USE_LVP
 
