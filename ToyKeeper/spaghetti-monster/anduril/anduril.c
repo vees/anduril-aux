@@ -612,12 +612,7 @@ uint8_t off_state(Event event, uint16_t arg) {
     #endif  // if (B_TIMING_ON != B_TIMEOUT_T)
     // 1 click: regular mode
     else if (event == EV_1click) {
-        #ifdef USE_MANUAL_MEMORY
-        if (manual_memory)
-            set_state(steady_state, nearest_level(manual_memory));
-        else
-            set_state(steady_state, nearest_level(memorized_level));
-        #endif
+        set_state(steady_state, DEFAULT_LEVEL);
         return MISCHIEF_MANAGED;
     }
     // two clicks: go to the "lockout state" repurposed for bright aux
@@ -1195,7 +1190,7 @@ uint8_t strobe_state(Event event, uint16_t arg) {
         #else
         else if (st == party_strobe_e) {
         #endif
-            if ((arg & 1) == 0) {
+            if ((arg & STROBE_ADJUST_SPEED_DIV) == 0) {
                 uint8_t d = strobe_delays[st];
                 d -= ramp_direction;
                 if (d < 8) d = 8;
@@ -1241,7 +1236,7 @@ uint8_t strobe_state(Event event, uint16_t arg) {
         #else
         else if (st == party_strobe_e) {
         #endif
-            if ((arg & 1) == 0) {
+            if ((arg & STROBE_ADJUST_SPEED_DIV) == 0) {
                 if (strobe_delays[st] < 255) strobe_delays[st] ++;
             }
         }
